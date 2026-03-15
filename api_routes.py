@@ -198,11 +198,29 @@ async def debug_screenshot(request: Request):
         # Check for video links in DOM
         dom_info = await page.evaluate("""() => {
             const videoLinks = document.querySelectorAll('a[href*="/video/"]');
-            const cards = document.querySelectorAll('[class*="video-card"], [class*="search-result"], [class*="feed-card"]');
+            const allLinks = [...document.querySelectorAll('a')].filter(a => a.href && a.href.includes('douyin.com'));
+            const cards = document.querySelectorAll('li, [class*="card"], [class*="item"]');
+            // Find first card that has a video/note link
+            let firstCard = null;
+            for (const c of cards) {
+                const a = c.querySelector('a[href*="/video/"], a[href*="/note/"]');
+                if (a) {
+                    firstCard = {
+                        tag: c.tagName, cls: c.className.substring(0, 100),
+                        links: [...c.querySelectorAll('a')].map(a => a.href.substring(0, 80)).slice(0, 5),
+                        text: c.textContent.substring(0, 200).replace(/\\s+/g, ' '),
+                    };
+                    break;
+                }
+            }
+            const e2e = [...new Set([...document.querySelectorAll('[data-e2e]')].map(el => el.getAttribute('data-e2e')))].slice(0, 20);
+            const sampleHrefs = allLinks.slice(0, 10).map(a => a.href.substring(0, 80));
             return {
                 video_link_count: videoLinks.length,
                 card_count: cards.length,
-                first_video_href: videoLinks[0] ? videoLinks[0].getAttribute('href') : null,
+                first_card: firstCard,
+                e2e_attrs: e2e,
+                sample_hrefs: sampleHrefs,
             };
         }""")
         return _ok({
