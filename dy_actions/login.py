@@ -67,27 +67,27 @@ async def get_login_qrcode() -> dict:
         except Exception:
             pass
 
-        # Try to trigger login dialog if not already showing
+        # Click 登录 button to trigger login dialog
         try:
-            login_btn = await page.query_selector(
-                '[class*="login-btn"], '
-                '[class*="sign-in"], '
-                'button:has-text("登录")'
-            )
+            login_btn = await page.query_selector('text=登录')
             if login_btn:
                 await login_btn.click()
+                await sleep_random(2, 3)
+            # Click 扫码登录 tab if visible
+            scan_tab = await page.query_selector('text=扫码登录')
+            if scan_tab:
+                await scan_tab.click()
                 await sleep_random(1, 2)
         except Exception:
             pass
 
-        # Get QR code image
+        # Take screenshot of QR code and return as base64
         try:
-            qr_elem = await page.wait_for_selector(QRCODE_SELECTOR, timeout=10000)
-            if qr_elem:
-                src = await qr_elem.get_attribute("src")
-                if src:
-                    asyncio.create_task(_poll_login_success(page, bm))
-                    return {"timeout": "4m0s", "is_logged_in": False, "img": src}
+            import base64
+            screenshot = await page.screenshot()
+            b64 = "data:image/png;base64," + base64.b64encode(screenshot).decode()
+            asyncio.create_task(_poll_login_success(page, bm))
+            return {"timeout": "4m0s", "is_logged_in": False, "img": b64}
         except Exception as e:
             logger.error(f"Failed to get QR code: {e}")
 
