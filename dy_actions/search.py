@@ -75,6 +75,25 @@ async def search_feeds(keyword: str, sort_by: str = "综合排序",
 
         # Extract feeds from DOM
         feeds = await extract_feeds_from_dom(page)
+
+        # If DOM extraction failed, dump debug info
+        if not feeds:
+            debug = await page.evaluate("""() => {
+                const allA = [...document.querySelectorAll('a')];
+                const videoLinks = allA.filter(a => (a.href||'').includes('/video/'));
+                const noteLinks = allA.filter(a => (a.href||'').includes('/note/'));
+                // Get first few li elements
+                const lis = [...document.querySelectorAll('li')].slice(0, 3).map(li => ({
+                    cls: li.className.substring(0, 60),
+                    childLinks: [...li.querySelectorAll('a')].map(a => (a.getAttribute('href')||'').substring(0, 60)).slice(0, 3),
+                    text: li.textContent.substring(0, 100).replace(/\\s+/g, ' ')
+                }));
+                return { videoLinks: videoLinks.length, noteLinks: noteLinks.length, lis: lis,
+                    sampleVideoHref: videoLinks[0] ? videoLinks[0].getAttribute('href').substring(0, 80) : null,
+                    title: document.title };
+            }""")
+            logger.warning(f"Search DOM debug: {debug}")
+
         logger.info(f"Search '{keyword}' extracted {len(feeds)} feeds via DOM")
         return {"feeds": feeds, "count": len(feeds)}
     finally:
