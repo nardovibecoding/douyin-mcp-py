@@ -2,11 +2,18 @@
 
 import asyncio
 import logging
+import os
 from patchright.async_api import async_playwright, Browser, BrowserContext, Playwright, Page
 
 from cookie_manager import load_cookies, save_cookies
 
 logger = logging.getLogger("douyin.browser")
+
+# Bright Data residential proxy — set via env or defaults
+PROXY_HOST = os.environ.get("PROXY_HOST", "brd.superproxy.io")
+PROXY_PORT = os.environ.get("PROXY_PORT", "33335")
+PROXY_USER = os.environ.get("PROXY_USER", "")
+PROXY_PASS = os.environ.get("PROXY_PASS", "")
 
 _instance: "BrowserManager | None" = None
 
@@ -27,18 +34,32 @@ class BrowserManager:
             if self._started:
                 return
             self._playwright = await async_playwright().start()
+
+            # Use residential proxy if configured
+            proxy_config = None
+            if PROXY_USER and PROXY_PASS:
+                proxy_config = {
+                    "server": f"http://{PROXY_HOST}:{PROXY_PORT}",
+                    "username": PROXY_USER,
+                    "password": PROXY_PASS,
+                }
+                logger.info(f"Using proxy: {PROXY_HOST}:{PROXY_PORT}")
+
             self._browser = await self._playwright.chromium.launch(
                 headless=headless,
+                proxy=proxy_config,
                 args=[
                     "--disable-blink-features=AutomationControlled",
                     "--no-sandbox",
                     "--disable-dev-shm-usage",
+                    "--ignore-certificate-errors",
                 ],
             )
             self._context = await self._browser.new_context(
                 viewport={"width": 1280, "height": 800},
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                 locale="zh-CN",
+                ignore_https_errors=True,
             )
             # Load existing cookies
             cookies = load_cookies()
