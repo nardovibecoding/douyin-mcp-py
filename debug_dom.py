@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nardo. AGPL-3.0 — see LICENSE
 import asyncio, json, sys
 sys.path.insert(0, "/home/bernard/douyin-mcp-py")
 from browser_manager import get_browser

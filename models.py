@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nardo. AGPL-3.0 — see LICENSE
 """Pydantic models for Douyin MCP server."""
 
 from typing import Optional

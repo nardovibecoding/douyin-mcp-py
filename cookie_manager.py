@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nardo. AGPL-3.0 — see LICENSE
 """Cookie management — bidirectional conversion between go-rod CDP format and Playwright format."""
 
 import json

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nardo. AGPL-3.0 — see LICENSE
 """Login status check and QR code retrieval for Douyin."""
 
 import asyncio

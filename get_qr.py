@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nardo. AGPL-3.0 — see LICENSE
 """Get Douyin QR code locally on Mac (clean IP), save cookies, sync to VPS."""
 import asyncio
 import sys

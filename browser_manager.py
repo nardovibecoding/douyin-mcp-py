@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nardo. AGPL-3.0 — see LICENSE
 """Singleton Patchright browser manager — shared context across requests."""
 
 import asyncio

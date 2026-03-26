@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nardo. AGPL-3.0 — see LICENSE
 """Douyin MCP Server — Starlette app with MCP + REST on same port."""
 
 import argparse

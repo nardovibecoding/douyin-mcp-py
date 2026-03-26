@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nardo. AGPL-3.0 — see LICENSE
 """HTTP-based Douyin share link parser — no browser needed.
 
 Ported from the existing douyin-mcp-server.

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Nardo. AGPL-3.0 — see LICENSE
 """Starlette REST API routes for Douyin MCP server."""
 
 import base64
