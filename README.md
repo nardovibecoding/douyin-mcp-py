@@ -4,6 +4,8 @@ MCP server for **抖音 (Douyin / TikTok China)** — lets Claude and other AI a
 
 **No browser required.** Uses [F2](https://github.com/Johnserf-Seed/f2) for pure-Python A-Bogus token generation — no CAPTCHA, no Chromium overhead.
 
+Douyin data is locked behind apps and anti-bot systems. Scraping it manually is fragile and slow. This exposes Douyin as clean MCP tools — search, download, transcribe — directly in Claude Code, no browser required.
+
 ## Tools (12)
 
 | Tool | What it does |
