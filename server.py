@@ -1,9 +1,24 @@
 # Copyright (c) 2026 Nardo. AGPL-3.0 — see LICENSE
-"""Douyin MCP Server — Starlette app with MCP + REST on same port."""
+"""Douyin MCP Server — Starlette app with MCP + REST on same port.
+
+F2-based: uses pure Python A-Bogus token generation, no browser needed.
+"""
 
 import argparse
+import asyncio
 import logging
+import signal
 from contextlib import asynccontextmanager
+
+# Configure logging BEFORE any F2 imports to suppress noise
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+)
+logger = logging.getLogger("douyin.server")
+
+# Apply F2 patches (must happen before f2.apps.douyin imports)
+import f2_patch  # noqa: F401
 
 import uvicorn
 from starlette.applications import Starlette
@@ -12,18 +27,12 @@ from starlette.responses import JSONResponse
 from starlette.requests import Request
 from starlette.routing import Route, Mount
 
-from browser_manager import get_browser
 from mcp_tools import mcp
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-)
-logger = logging.getLogger("douyin.server")
-
-# Headless flag
-_headless = True
+# Suppress noisy F2 internal logs
+logging.getLogger("f2").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # Create MCP app — this also creates the session manager internally
 mcp_app = mcp.streamable_http_app()
@@ -32,7 +41,14 @@ _session_manager = mcp.session_manager
 
 # Health check
 async def health(request: Request):
-    return JSONResponse({"status": "ok"})
+    return JSONResponse({"status": "ok", "backend": "f2"})
+
+
+# Hot-reload: reset ttwid + cookie cache without restarting the server
+async def reload_handler(request: Request):
+    from dy_actions.f2_client import reset_ttwid
+    reset_ttwid()
+    return JSONResponse({"status": "ok", "reloaded": "ttwid"})
 
 
 # Import REST route handlers
@@ -43,12 +59,12 @@ from api_routes import (
     parse_video_info_handler, download_link_handler,
     extract_text_handler,
     recognize_audio_url_handler, recognize_audio_file_handler,
-    debug_screenshot,
 )
 
 
 rest_routes = [
     Route("/health", health),
+    Route("/api/v1/reload", reload_handler, methods=["POST"]),
     Route("/api/v1/login/status", login_status_handler),
     Route("/api/v1/login/qrcode", login_qrcode_handler),
     Route("/api/v1/login/cookies", delete_cookies_handler, methods=["DELETE"]),
@@ -61,28 +77,33 @@ rest_routes = [
     Route("/api/v1/video/extract_text", extract_text_handler, methods=["POST"]),
     Route("/api/v1/audio/recognize_url", recognize_audio_url_handler, methods=["POST"]),
     Route("/api/v1/audio/recognize_file", recognize_audio_file_handler, methods=["POST"]),
-    Route("/api/v1/debug/screenshot", debug_screenshot),
 ]
 
 
 @asynccontextmanager
 async def lifespan(app: Starlette):
-    # Start browser
-    logger.info("Starting browser...")
-    bm = await get_browser()
-    await bm.start(headless=_headless)
-    logger.info("Browser ready")
+    logger.info("Douyin MCP Server starting (F2 backend, no browser)")
+
+    # Pre-generate ttwid for guest mode
+    try:
+        from dy_actions.f2_client import get_f2_kwargs
+        kwargs = get_f2_kwargs()
+        logger.info("F2 client initialized (guest ttwid ready)")
+    except Exception as e:
+        logger.warning(f"F2 client init warning: {e}")
+
+    # SIGHUP → reset ttwid without restart
+    from dy_actions.f2_client import reset_ttwid
+    loop = asyncio.get_event_loop()
+    loop.add_signal_handler(signal.SIGHUP, reset_ttwid)
+    logger.info("SIGHUP handler installed (kill -HUP <pid> to reset ttwid)")
 
     # Start MCP session manager (needed for /mcp endpoint)
     async with _session_manager.run():
         logger.info("MCP session manager ready")
         yield
 
-    # Shutdown browser
-    logger.info("Shutting down browser...")
-    bm = await get_browser()
-    await bm.stop()
-    logger.info("Browser stopped")
+    logger.info("Douyin MCP Server stopped")
 
 
 # Build combined app
@@ -105,15 +126,9 @@ app.add_middleware(
 
 
 def main():
-    global _headless
-    parser = argparse.ArgumentParser(description="Douyin MCP Server (Patchright)")
+    parser = argparse.ArgumentParser(description="Douyin MCP Server (F2)")
     parser.add_argument("--port", type=int, default=18070, help="Server port (default: 18070)")
-    parser.add_argument("--headless", action="store_true", default=True, help="Run browser headless (default)")
-    parser.add_argument("--no-headless", action="store_true", help="Run browser with GUI")
     args = parser.parse_args()
-
-    if args.no_headless:
-        _headless = False
 
     uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="info")
 
