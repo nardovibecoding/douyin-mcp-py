@@ -96,5 +96,41 @@ class TestLifespan(unittest.IsolatedAsyncioTestCase):
                 self.fail(f"lifespan raised unexpectedly: {e}")
 
 
+class TestReloadEndpoint(unittest.IsolatedAsyncioTestCase):
+    async def test_reload_returns_ok(self):
+        """POST /api/v1/reload resets ttwid and returns ok."""
+        from server import reload_handler
+        from starlette.testclient import TestClient
+        from starlette.applications import Starlette
+        from starlette.routing import Route
+
+        app = Starlette(routes=[Route("/api/v1/reload", reload_handler, methods=["POST"])])
+        client = TestClient(app)
+
+        with patch("dy_actions.f2_client.reset_ttwid", create=True) as mock_reset:
+            resp = client.post("/api/v1/reload")
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["reloaded"], "ttwid")
+        mock_reset.assert_called_once()
+
+    async def test_reload_reachable_without_body(self):
+        """Reload endpoint must not require a request body."""
+        from server import reload_handler
+        from starlette.testclient import TestClient
+        from starlette.applications import Starlette
+        from starlette.routing import Route
+
+        app = Starlette(routes=[Route("/api/v1/reload", reload_handler, methods=["POST"])])
+        client = TestClient(app)
+
+        with patch("dy_actions.f2_client.reset_ttwid", create=True):
+            resp = client.post("/api/v1/reload")
+
+        self.assertNotEqual(resp.status_code, 422)  # must not require body
+
+
 if __name__ == "__main__":
     unittest.main()
